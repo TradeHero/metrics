@@ -8,7 +8,7 @@ public class Environment {
     }
 
     public static boolean hasTalkingDataOnClasspath() {
-        return hasClass("com.localytics.android.LocalyticsSession");
+        return hasClass("com.tendcloud.tenddata.TCAgent");
     }
 
     private static boolean hasClass(String classPath) {
