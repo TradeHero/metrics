@@ -41,6 +41,15 @@ public final class Analytics {
         closeSession();
     }
 
+    public final void fireProfileEvent(AnalyticsProfileEvent analyticsProfileEvent) {
+        // TODO should create a policy for deciding whether to discard or to process pending action
+//        discardPendingActions();
+
+        openSession();
+        doAction(new AddProfileAction(analyticsProfileEvent));
+        closeSession();
+    }
+
     public final Analytics openSession() {
         return openSession(null);
     }
@@ -162,6 +171,19 @@ public final class Analytics {
         @Override
         public void process() {
             handler.addEvent(analyticsEvent);
+        }
+    }
+
+    private final class AddProfileAction extends HandlerAction {
+        private final AnalyticsProfileEvent analyticsProfileEvent;
+
+        public AddProfileAction(AnalyticsProfileEvent analyticsProfileEvent) {
+            this.analyticsProfileEvent = analyticsProfileEvent;
+        }
+
+        @Override
+        public void process() {
+            handler.setProfileAttribute(analyticsProfileEvent);
         }
     }
 

@@ -2,7 +2,6 @@ package com.tradehero.metrics;
 
 import android.content.Context;
 import com.localytics.android.LocalyticsSession;
-
 import java.util.ArrayList;
 import java.util.Set;
 
@@ -37,4 +36,10 @@ public class LocalyticsAdapter implements AnalyticsAdapter {
         localytics.close(new ArrayList<String>(customDimensions));
         localytics.upload();
     }
+
+    @Override
+    public void setProfileAttribute(AnalyticsProfileEvent analyticsProfileEvent) {
+        localytics.setProfileAttribute(analyticsProfileEvent.getName(), analyticsProfileEvent.getAttributes());
+    }
+
 }

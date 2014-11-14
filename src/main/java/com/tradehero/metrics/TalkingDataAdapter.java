@@ -28,6 +28,11 @@ public class TalkingDataAdapter implements AnalyticsAdapter {
     }
 
     @Override
+    public void setProfileAttribute(AnalyticsProfileEvent analyticsProfileEvent) {
+
+    }
+
+    @Override
     public void addEvent(AnalyticsEvent analyticsEvent) {
         /** TODO Second string is a tag **/
         TCAgent.onEvent(context, analyticsEvent.getName(), "", analyticsEvent.getAttributes());
