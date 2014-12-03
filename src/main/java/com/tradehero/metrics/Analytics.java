@@ -98,13 +98,19 @@ public final class Analytics {
         private String localyticsAppKey;
         private String talkingDataKey;
         private String talkingDataTag;
+        private boolean amp;
 
         private Builder(Context context) {
             this.context = context;
         }
 
         public Builder withLocalytics(String appKey) {
+            return withLocalytics(appKey, false);
+        }
+
+        public Builder withLocalytics(String appKey, boolean isAmp) {
             localyticsAppKey = appKey;
+            amp = isAmp;
             return this;
         }
 
@@ -133,7 +139,7 @@ public final class Analytics {
         private Set<AnalyticsAdapter> findAdapters() {
             Set<AnalyticsAdapter> analyticsAdapters = new HashSet<AnalyticsAdapter>();
             if (Environment.hasLocalyticsOnClasspath() && localyticsAppKey != null) {
-                analyticsAdapters.add(new LocalyticsAdapter(context, localyticsAppKey));
+                analyticsAdapters.add(new LocalyticsAdapter(context, localyticsAppKey, amp));
             }
 
             if (Environment.hasTalkingDataOnClasspath() && talkingDataKey != null) {

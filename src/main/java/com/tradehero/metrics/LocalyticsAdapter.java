@@ -1,6 +1,7 @@
 package com.tradehero.metrics;
 
 import android.content.Context;
+import com.localytics.android.LocalyticsAmpSession;
 import com.localytics.android.LocalyticsSession;
 import java.util.ArrayList;
 import java.util.Set;
@@ -11,8 +12,9 @@ import java.util.Set;
 public class LocalyticsAdapter implements AnalyticsAdapter {
     private final LocalyticsSession localytics;
 
-    LocalyticsAdapter(Context context, String appKey) {
-        localytics = new LocalyticsSession(context, appKey);
+    LocalyticsAdapter(Context context, String appKey, boolean isAmp) {
+        localytics = isAmp ? new LocalyticsAmpSession(context, appKey) :
+            new LocalyticsSession(context, appKey);
         LocalyticsSession.setLoggingEnabled(true);
     }
 
