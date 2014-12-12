@@ -138,11 +138,11 @@ public final class Analytics {
 
         private Set<AnalyticsAdapter> findAdapters() {
             Set<AnalyticsAdapter> analyticsAdapters = new HashSet<AnalyticsAdapter>();
-            if (Environment.hasLocalyticsOnClasspath() && localyticsAppKey != null) {
+            if (localyticsAppKey != null && Environment.hasLocalyticsOnClasspath()) {
                 analyticsAdapters.add(new LocalyticsAdapter(context, localyticsAppKey, amp));
             }
 
-            if (Environment.hasTalkingDataOnClasspath() && talkingDataKey != null) {
+            if (talkingDataKey != null && Environment.hasTalkingDataOnClasspath()) {
                 analyticsAdapters.add(new TalkingDataAdapter(context, talkingDataKey, talkingDataTag));
             }
 
