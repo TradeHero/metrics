@@ -8,22 +8,29 @@ import android.content.Context;
 import com.google.auto.value.AutoValue;
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public final class Analytics {
+    private static int counter = 0;
+    static final int LOCALYTICS = ++counter;
+    static final int TALKING_DATA = ++counter;
+
     private final List<ActionPair<?>> pendingActions = new LinkedList<ActionPair<?>>();
-    private final Set<AnalyticsAdapter> analyticsAdapters;
+    private final Map<Integer, AnalyticsAdapter> analyticsAdapters;
     private final Func<Set<String>> addBuiltInDimensionsAction;
 
     public static Builder with(Context context) {
         return new Builder(context);
     }
 
-    private Analytics(Set<AnalyticsAdapter> adapters, final Set<String> builtinDimensions) {
+    private Analytics(Map<Integer, AnalyticsAdapter> adapters,
+        final Set<String> builtinDimensions) {
         this.analyticsAdapters = adapters;
         this.addBuiltInDimensionsAction = new Func<Set<String>>() {
 
@@ -39,6 +46,15 @@ public final class Analytics {
                 }
             }
         };
+    }
+
+    public final ILocalyticsAdapter localytics() {
+        AnalyticsAdapter adapter = analyticsAdapters.get(LOCALYTICS);
+        if (adapter instanceof ILocalyticsAdapter) {
+            return (ILocalyticsAdapter) adapter;
+        } else {
+            throw new IllegalStateException("Localytics was not setup properly!");
+        }
     }
 
     public final Analytics addEvent(AnalyticsEvent analyticsEvent) {
@@ -72,7 +88,7 @@ public final class Analytics {
 
         ActionComposite<Set<String>> closeActionWithBuiltInDimensions =
             ActionComposite.create(CloseSessionAction, addBuiltInDimensionsAction);
-        for (AnalyticsAdapter adapter : analyticsAdapters) {
+        for (AnalyticsAdapter adapter : analyticsAdapters.values()) {
             closeActionWithBuiltInDimensions.call(adapter, customDimensions);
         }
     }
@@ -82,7 +98,7 @@ public final class Analytics {
         // discardPendingActions();
 
         openSession();
-        for (AnalyticsAdapter adapter: analyticsAdapters) {
+        for (AnalyticsAdapter adapter: analyticsAdapters.values()) {
             adapter.addEvent(analyticsEvent);
         }
         closeSession();
@@ -94,7 +110,7 @@ public final class Analytics {
 
     @SuppressWarnings("unchecked")
     private void doPendingActions() {
-        for (AnalyticsAdapter adapter : analyticsAdapters) {
+        for (AnalyticsAdapter adapter : analyticsAdapters.values()) {
             for (ActionPair actionPair : pendingActions) {
                 actionPair.action().call(adapter, actionPair.data());
             }
@@ -208,17 +224,19 @@ public final class Analytics {
             return new Analytics(findAdapters(), Collections.unmodifiableSet(builtinDimensions));
         }
 
-        private Set<AnalyticsAdapter> findAdapters() {
-            Set<AnalyticsAdapter> analyticsAdapters = new HashSet<AnalyticsAdapter>();
+        private Map<Integer, AnalyticsAdapter> findAdapters() {
+            Map<Integer, AnalyticsAdapter> adapters =
+                new HashMap<Integer, AnalyticsAdapter>();
             if (localyticsAppKey != null && Environment.hasLocalyticsOnClasspath()) {
-                analyticsAdapters.add(new LocalyticsAdapter(context, localyticsAppKey, amp));
+                adapters.put(LOCALYTICS, new LocalyticsAdapter(context, localyticsAppKey, amp));
             }
 
             if (talkingDataKey != null && Environment.hasTalkingDataOnClasspath()) {
-                analyticsAdapters.add(new TalkingDataAdapter(context, talkingDataKey, talkingDataTag));
+                adapters.put(TALKING_DATA,
+                    new TalkingDataAdapter(context, talkingDataKey, talkingDataTag));
             }
 
-            return analyticsAdapters;
+            return adapters;
         }
     }
 }

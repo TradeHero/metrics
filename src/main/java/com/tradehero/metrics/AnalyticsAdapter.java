@@ -16,6 +16,4 @@ public interface AnalyticsAdapter {
      * unlike Localytics, this close method will not only close active session but also upload data to tracker server *
      */
     void close(Set<String> customDimensions);
-
-    void setProfileAttribute(AnalyticsProfileEvent analyticsProfileEvent);
 }

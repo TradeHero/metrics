@@ -9,7 +9,7 @@ import java.util.Set;
  * Created by thonguyen on 7/11/14.
  */
 
-public class TalkingDataAdapter implements AnalyticsAdapter {
+class TalkingDataAdapter implements AnalyticsAdapter {
     private final Context context;
 
     public TalkingDataAdapter(Context context, String key, String tag) {
@@ -25,11 +25,6 @@ public class TalkingDataAdapter implements AnalyticsAdapter {
     @Override
     public void close(Set<String> customDimensions) {
         // TODO
-    }
-
-    @Override
-    public void setProfileAttribute(AnalyticsProfileEvent analyticsProfileEvent) {
-
     }
 
     @Override

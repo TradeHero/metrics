@@ -9,7 +9,7 @@ import java.util.Set;
 /**
  * Created by thonguyen on 7/11/14.
  */
-public class LocalyticsAdapter implements AnalyticsAdapter {
+class LocalyticsAdapter implements ILocalyticsAdapter {
     private final LocalyticsSession localytics;
 
     LocalyticsAdapter(Context context, String appKey, boolean isAmp) {
@@ -39,9 +39,7 @@ public class LocalyticsAdapter implements AnalyticsAdapter {
         localytics.upload();
     }
 
-    @Override
     public void setProfileAttribute(AnalyticsProfileEvent analyticsProfileEvent) {
         localytics.setProfileAttribute(analyticsProfileEvent.getName(), analyticsProfileEvent.getAttributes());
     }
-
 }
