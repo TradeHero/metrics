@@ -5,52 +5,50 @@ package com.tradehero.metrics;
  */
 
 import android.content.Context;
-
-import java.util.*;
+import com.google.auto.value.AutoValue;
+import java.io.Serializable;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
 
 public final class Analytics {
-    private final Set<Action> pendingActions = new LinkedHashSet<Action>();
+    private final List<ActionPair<?>> pendingActions = new LinkedList<ActionPair<?>>();
     private final Set<AnalyticsAdapter> analyticsAdapters;
-    private final Set<String> builtinDimensions;
+    private final Func<Set<String>> addBuiltInDimensionsAction;
 
     public static Builder with(Context context) {
         return new Builder(context);
     }
 
-    private Analytics(Set<AnalyticsAdapter> analyticsAdapters, Set<String> builtinDimensions) {
-        this.analyticsAdapters = analyticsAdapters;
-        this.builtinDimensions = builtinDimensions;
+    private Analytics(Set<AnalyticsAdapter> adapters, final Set<String> builtinDimensions) {
+        this.analyticsAdapters = adapters;
+        this.addBuiltInDimensionsAction = new Func<Set<String>>() {
+
+            @Override public Set<String> call(Set<String> dimensions) {
+                if (dimensions == null) {
+                    return builtinDimensions;
+                } else {
+                    Set<String> result =
+                        new LinkedHashSet<String>(builtinDimensions.size() + dimensions.size());
+                    result.addAll(builtinDimensions);
+                    result.addAll(dimensions);
+                    return result;
+                }
+            }
+        };
     }
 
     public final Analytics addEvent(AnalyticsEvent analyticsEvent) {
-        pendingActions.add(new AddEventAction(analyticsEvent));
+        pendingActions.add(ActionPair.create(analyticsEvent, AddEventAction));
         return this;
     }
 
     public final Analytics tagScreen(String screenName) {
-        pendingActions.add(new TagScreenAction(screenName));
+        pendingActions.add(ActionPair.create(screenName, TagScreenAction));
         return this;
-    }
-
-    public final void fireEvent(AnalyticsEvent analyticsEvent) {
-        // TODO should create a policy for deciding whether to discard or to process pending action
-        discardPendingActions();
-
-        openSession();
-        for (AnalyticsAdapter adapter: analyticsAdapters)
-        {
-            adapter.addEvent(analyticsEvent);
-        }
-        closeSession();
-    }
-
-    public final void fireProfileEvent(AnalyticsProfileEvent analyticsProfileEvent) {
-        // TODO should create a policy for deciding whether to discard or to process pending action
-//        discardPendingActions();
-
-        openSession();
-        doAction(new AddProfileAction(analyticsProfileEvent));
-        closeSession();
     }
 
     public final Analytics openSession() {
@@ -58,7 +56,8 @@ public final class Analytics {
     }
 
     public final Analytics openSession(Set<String> customDimensions) {
-        doAction(new OpenSessionAction(customDimensions));
+        pendingActions.add(ActionPair.create(customDimensions,
+            ActionComposite.create(OpenSessionAction, addBuiltInDimensionsAction)));
         return this;
     }
 
@@ -70,25 +69,98 @@ public final class Analytics {
         if (!pendingActions.isEmpty()) {
             doPendingActions();
         }
-        doAction(new CloseSessionAction(customDimensions));
+
+        ActionComposite<Set<String>> closeActionWithBuiltInDimensions =
+            ActionComposite.create(CloseSessionAction, addBuiltInDimensionsAction);
+        for (AnalyticsAdapter adapter : analyticsAdapters) {
+            closeActionWithBuiltInDimensions.call(adapter, customDimensions);
+        }
+    }
+
+    public final void fireEvent(AnalyticsEvent analyticsEvent) {
+        // TODO should create a policy for deciding whether to discard or to process pending action
+        // discardPendingActions();
+
+        openSession();
+        for (AnalyticsAdapter adapter: analyticsAdapters) {
+            adapter.addEvent(analyticsEvent);
+        }
+        closeSession();
     }
 
     private void discardPendingActions() {
         pendingActions.clear();
     }
 
+    @SuppressWarnings("unchecked")
     private void doPendingActions() {
-        for (Action action : new ArrayList<Action>(pendingActions)) {
-            doAction(action);
+        for (AnalyticsAdapter adapter : analyticsAdapters) {
+            for (ActionPair actionPair : pendingActions) {
+                actionPair.action().call(adapter, actionPair.data());
+            }
         }
     }
 
-    /**
-     * TODO Functional programming can cure this pain *
-     */
-    private void doAction(Action action) {
-        for (AnalyticsAdapter adapter : analyticsAdapters) {
-            action.process(adapter);
+    static interface Func1<T1, R> {
+        public R call(T1 t1);
+    }
+
+    static interface Func<T> extends Func1<T, T> {}
+
+    static interface Action2<T1, T2> {
+        public void call(T1 t1, T2 t2);
+    }
+
+    static interface Action<T> extends Action2<AnalyticsAdapter, T> {
+        @Override void call(AnalyticsAdapter analyticsAdapter, T data);
+    }
+
+    private static final Action<String> TagScreenAction = new Action<String>() {
+        @Override public void call(AnalyticsAdapter analyticsAdapter, String screenName) {
+            analyticsAdapter.tagScreen(screenName);
+        }
+    };
+
+    private static final Action<AnalyticsEvent> AddEventAction = new Action<AnalyticsEvent>() {
+        @Override public void call(AnalyticsAdapter analyticsAdapter, AnalyticsEvent data) {
+            analyticsAdapter.addEvent(data);
+        }
+    };
+
+    private static final Action<Set<String>> OpenSessionAction = new Action<Set<String>>() {
+        @Override public void call(AnalyticsAdapter analyticsAdapter, Set<String> data) {
+            analyticsAdapter.open(data);
+        }
+    };
+
+    private static final Action<Set<String>> CloseSessionAction = new Action<Set<String>>() {
+        @Override public void call(AnalyticsAdapter analyticsAdapter, Set<String> data) {
+            analyticsAdapter.close(data);
+        }
+    };
+
+    @AutoValue
+    abstract static class ActionComposite<T> implements Action<T>, Serializable {
+        abstract Action<T> g();
+        abstract Func<T> f();
+
+        public static <S> ActionComposite<S> create(Action<S> g, Func<S> f) {
+            return new AutoValue_Analytics_ActionComposite<S>(g, f);
+        }
+
+        @Override public void call(AnalyticsAdapter analyticsAdapter, T data) {
+            g().call(analyticsAdapter, f().call(data));
+        }
+    }
+
+    @AutoValue
+    static abstract class ActionPair<T> {
+        abstract T data();
+        abstract Action<T> action();
+
+        @SuppressWarnings("unchecked")
+        public static <S> ActionPair create(S data, Action<S> action) {
+            return new AutoValue_Analytics_ActionPair(data, action);
         }
     }
 
@@ -133,7 +205,7 @@ public final class Analytics {
         }
 
         public Analytics build() {
-            return new Analytics(findAdapters(), builtinDimensions);
+            return new Analytics(findAdapters(), Collections.unmodifiableSet(builtinDimensions));
         }
 
         private Set<AnalyticsAdapter> findAdapters() {
@@ -149,84 +221,5 @@ public final class Analytics {
             return analyticsAdapters;
         }
     }
-
-    //region Action classes
-    private interface Action {
-        void process(AnalyticsAdapter adapter);
-    }
-
-    private final class AddEventAction implements Action {
-        private final AnalyticsEvent analyticsEvent;
-
-        public AddEventAction(AnalyticsEvent analyticsEvent) {
-            this.analyticsEvent = analyticsEvent;
-        }
-
-        @Override
-        public void process(AnalyticsAdapter adapter) {
-            adapter.addEvent(analyticsEvent);
-        }
-    }
-
-    private final class AddProfileAction implements Action {
-        private final AnalyticsProfileEvent analyticsProfileEvent;
-
-        public AddProfileAction(AnalyticsProfileEvent analyticsProfileEvent) {
-            this.analyticsProfileEvent = analyticsProfileEvent;
-        }
-
-        @Override
-        public void process(AnalyticsAdapter adapter) {
-            adapter.setProfileAttribute(analyticsProfileEvent);
-        }
-    }
-
-    private abstract class HandlerActionWithDimensions implements Action {
-        protected final Set<String> customDimensions;
-
-        public HandlerActionWithDimensions(Set<String> customDimensions) {
-            Set<String> dimensions = new HashSet<String>(builtinDimensions);
-            if (customDimensions != null) {
-                dimensions.addAll(customDimensions);
-            }
-            this.customDimensions = dimensions;
-        }
-    }
-
-    private final class OpenSessionAction extends HandlerActionWithDimensions {
-        public OpenSessionAction(Set<String> customDimensions) {
-            super(customDimensions);
-        }
-
-        @Override
-        public void process(AnalyticsAdapter adapter) {
-            adapter.open(customDimensions);
-        }
-    }
-
-    private final class CloseSessionAction extends HandlerActionWithDimensions {
-        public CloseSessionAction(Set<String> customDimensions) {
-            super(customDimensions);
-        }
-
-        @Override
-        public void process(AnalyticsAdapter adapter) {
-            adapter.close(builtinDimensions);
-        }
-    }
-
-    private class TagScreenAction implements Action {
-        private final String screenName;
-
-        public TagScreenAction(String screenName) {
-            this.screenName = screenName;
-        }
-
-        @Override
-        public void process(AnalyticsAdapter adapter) {
-            adapter.tagScreen(screenName);
-        }
-    }
-    //endregion
 }
 
