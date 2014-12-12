@@ -6,7 +6,7 @@ import java.util.Map;
 /**
  * Created by thonguyen on 7/11/14.
  */
-public abstract class AnalyticsEvent {
+public class AnalyticsEvent {
     private final String name;
     private final Map<String, String> attributes;
 

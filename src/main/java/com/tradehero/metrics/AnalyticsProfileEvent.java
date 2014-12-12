@@ -3,7 +3,7 @@ package com.tradehero.metrics;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public abstract class AnalyticsProfileEvent {
+public class AnalyticsProfileEvent {
     private final String name;
     private final Collection<String> attributes;
 
