@@ -3,7 +3,6 @@ package com.tradehero.metrics;
 /**
  * Created by thonguyen on 7/11/14.
  */
-
 import android.content.Context;
 import com.google.auto.value.AutoValue;
 import java.io.Serializable;
@@ -23,15 +22,17 @@ public final class Analytics {
 
     private final List<ActionPair<?>> pendingActions = new LinkedList<ActionPair<?>>();
     private final Map<Integer, AnalyticsAdapter> analyticsAdapters;
+    private final boolean discardOnFireSingleEvent;
     private final Func<Set<String>> addBuiltInDimensionsAction;
 
     public static Builder with(Context context) {
         return new Builder(context);
     }
 
-    private Analytics(Map<Integer, AnalyticsAdapter> adapters,
-        final Set<String> builtinDimensions) {
+    private Analytics(Map<Integer, AnalyticsAdapter> adapters, final Set<String> builtinDimensions,
+        boolean discardOnFireSingleEvent) {
         this.analyticsAdapters = adapters;
+        this.discardOnFireSingleEvent = discardOnFireSingleEvent;
         this.addBuiltInDimensionsAction = new Func<Set<String>>() {
 
             @Override public Set<String> call(Set<String> dimensions) {
@@ -42,7 +43,7 @@ public final class Analytics {
                         new LinkedHashSet<String>(builtinDimensions.size() + dimensions.size());
                     result.addAll(builtinDimensions);
                     result.addAll(dimensions);
-                    return result;
+                    return Collections.unmodifiableSet(result);
                 }
             }
         };
@@ -94,8 +95,9 @@ public final class Analytics {
     }
 
     public final void fireEvent(AnalyticsEvent analyticsEvent) {
-        // TODO should create a policy for deciding whether to discard or to process pending action
-        // discardPendingActions();
+        if (discardOnFireSingleEvent) {
+            discardPendingActions();
+        }
 
         openSession();
         for (AnalyticsAdapter adapter: analyticsAdapters.values()) {
@@ -187,6 +189,7 @@ public final class Analytics {
         private String talkingDataKey;
         private String talkingDataTag;
         private boolean amp;
+        private boolean discardOnFireSingleEvent = true;
 
         private Builder(Context context) {
             this.context = context;
@@ -220,8 +223,14 @@ public final class Analytics {
             return this;
         }
 
+        public Builder discardOnFireSingleEvent(boolean discardOnFireSingleEvent) {
+            this.discardOnFireSingleEvent = discardOnFireSingleEvent;
+            return this;
+        }
+
         public Analytics build() {
-            return new Analytics(findAdapters(), Collections.unmodifiableSet(builtinDimensions));
+            return new Analytics(findAdapters(), Collections.unmodifiableSet(builtinDimensions),
+                discardOnFireSingleEvent);
         }
 
         private Map<Integer, AnalyticsAdapter> findAdapters() {
