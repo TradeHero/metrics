@@ -37,7 +37,10 @@ public final class Analytics {
         discardPendingActions();
 
         openSession();
-        doAction(new AddEventAction(analyticsEvent));
+        for (AnalyticsAdapter adapter: analyticsAdapters)
+        {
+            adapter.addEvent(analyticsEvent);
+        }
         closeSession();
     }
 
@@ -80,15 +83,12 @@ public final class Analytics {
         }
     }
 
-
-
     /**
      * TODO Functional programming can cure this pain *
      */
     private void doAction(Action action) {
-        for (AnalyticsAdapter handler : analyticsAdapters) {
-            action.setHandler(handler);
-            action.process();
+        for (AnalyticsAdapter adapter : analyticsAdapters) {
+            action.process(adapter);
         }
     }
 
@@ -152,22 +152,10 @@ public final class Analytics {
 
     //region Action classes
     private interface Action {
-        void process();
-
-        void setHandler(AnalyticsAdapter handler);
+        void process(AnalyticsAdapter adapter);
     }
 
-    private abstract class HandlerAction
-            implements Action {
-        protected AnalyticsAdapter handler;
-
-        @Override
-        public void setHandler(AnalyticsAdapter handler) {
-            this.handler = handler;
-        }
-    }
-
-    private final class AddEventAction extends HandlerAction {
+    private final class AddEventAction implements Action {
         private final AnalyticsEvent analyticsEvent;
 
         public AddEventAction(AnalyticsEvent analyticsEvent) {
@@ -175,12 +163,12 @@ public final class Analytics {
         }
 
         @Override
-        public void process() {
-            handler.addEvent(analyticsEvent);
+        public void process(AnalyticsAdapter adapter) {
+            adapter.addEvent(analyticsEvent);
         }
     }
 
-    private final class AddProfileAction extends HandlerAction {
+    private final class AddProfileAction implements Action {
         private final AnalyticsProfileEvent analyticsProfileEvent;
 
         public AddProfileAction(AnalyticsProfileEvent analyticsProfileEvent) {
@@ -188,12 +176,12 @@ public final class Analytics {
         }
 
         @Override
-        public void process() {
-            handler.setProfileAttribute(analyticsProfileEvent);
+        public void process(AnalyticsAdapter adapter) {
+            adapter.setProfileAttribute(analyticsProfileEvent);
         }
     }
 
-    private abstract class HandlerActionWithDimensions extends HandlerAction {
+    private abstract class HandlerActionWithDimensions implements Action {
         protected final Set<String> customDimensions;
 
         public HandlerActionWithDimensions(Set<String> customDimensions) {
@@ -211,8 +199,8 @@ public final class Analytics {
         }
 
         @Override
-        public void process() {
-            handler.open(customDimensions);
+        public void process(AnalyticsAdapter adapter) {
+            adapter.open(customDimensions);
         }
     }
 
@@ -222,12 +210,12 @@ public final class Analytics {
         }
 
         @Override
-        public void process() {
-            handler.close(builtinDimensions);
+        public void process(AnalyticsAdapter adapter) {
+            adapter.close(builtinDimensions);
         }
     }
 
-    private class TagScreenAction extends HandlerAction {
+    private class TagScreenAction implements Action {
         private final String screenName;
 
         public TagScreenAction(String screenName) {
@@ -235,8 +223,8 @@ public final class Analytics {
         }
 
         @Override
-        public void process() {
-            handler.tagScreen(screenName);
+        public void process(AnalyticsAdapter adapter) {
+            adapter.tagScreen(screenName);
         }
     }
     //endregion
