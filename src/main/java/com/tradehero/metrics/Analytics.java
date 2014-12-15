@@ -36,7 +36,7 @@ public final class Analytics {
         this.addBuiltInDimensionsAction = new Func<Set<String>>() {
 
             @Override public Set<String> call(Set<String> dimensions) {
-                if (dimensions == null) {
+                if (dimensions.size() == 0) {
                     return builtinDimensions;
                 } else {
                     Set<String> result =
@@ -49,6 +49,7 @@ public final class Analytics {
         };
     }
 
+    // Not recommended
     public final ILocalyticsAdapter localytics() {
         AnalyticsAdapter adapter = analyticsAdapters.get(LOCALYTICS);
         if (adapter instanceof ILocalyticsAdapter) {
@@ -69,7 +70,7 @@ public final class Analytics {
     }
 
     public final Analytics openSession() {
-        return openSession(null);
+        return openSession(Collections.<String>emptySet());
     }
 
     public final Analytics openSession(Set<String> customDimensions) {
@@ -79,7 +80,7 @@ public final class Analytics {
     }
 
     public final void closeSession() {
-        closeSession(null);
+        closeSession(Collections.<String>emptySet());
     }
 
     public final void closeSession(Set<String> customDimensions) {
