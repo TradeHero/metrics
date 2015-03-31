@@ -11,7 +11,7 @@
     <properties>
         <java.version>1.6</java.version>
         <maven-compiler.version>3.2</maven-compiler.version>
-        <autovalue.version>1.0-SNAPSHOT</autovalue.version>
+        <autovalue.version>1.0</autovalue.version>
     </properties>
 
     <dependencies>
@@ -25,10 +25,10 @@
         <dependency>
             <groupId>com.localytics.android</groupId>
             <artifactId>library</artifactId>
-            <version>2.72.0</version>
+            <version>3.1.0</version>
             <optional>true</optional>
             <scope>system</scope>
-            <systemPath>${project.basedir}/libs/library-2.72.0.jar</systemPath>
+            <systemPath>${project.basedir}/libs/library-3.1.0.jar</systemPath>
             <exclusions>
                 <exclusion>
                     <groupId>com.google.android</groupId>

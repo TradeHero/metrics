@@ -3,8 +3,6 @@ package com.tradehero.metrics;
 import android.content.Context;
 import com.tendcloud.tenddata.TCAgent;
 
-import java.util.Set;
-
 /**
  * Created by thonguyen on 7/11/14.
  */
@@ -15,16 +13,6 @@ class TalkingDataAdapter implements AnalyticsAdapter {
     public TalkingDataAdapter(Context context, String key, String tag) {
         this.context = context;
         TCAgent.init(context, key, tag);
-    }
-
-    @Override
-    public void open(Set<String> customDimensions) {
-        // TODO
-    }
-
-    @Override
-    public void close(Set<String> customDimensions) {
-        // TODO
     }
 
     @Override

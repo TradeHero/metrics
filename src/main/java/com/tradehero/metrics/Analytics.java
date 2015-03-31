@@ -3,17 +3,12 @@ package com.tradehero.metrics;
 /**
  * Created by thonguyen on 7/11/14.
  */
-import android.content.Context;
+
+import android.app.Application;
 import com.google.auto.value.AutoValue;
+
 import java.io.Serializable;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public final class Analytics {
     private static int counter = 0;
@@ -25,8 +20,8 @@ public final class Analytics {
     private final boolean discardOnFireSingleEvent;
     private final Func<Set<String>> addBuiltInDimensionsAction;
 
-    public static Builder with(Context context) {
-        return new Builder(context);
+    public static Builder with(Application application) {
+        return new Builder(application);
     }
 
     private Analytics(Map<Integer, AnalyticsAdapter> adapters, final Set<String> builtinDimensions,
@@ -69,42 +64,14 @@ public final class Analytics {
         return this;
     }
 
-    public final Analytics openSession() {
-        return openSession(Collections.<String>emptySet());
-    }
-
-    public final Analytics openSession(Set<String> customDimensions) {
-        pendingActions.add(ActionPair.create(customDimensions,
-            ActionComposite.create(OpenSessionAction, addBuiltInDimensionsAction)));
-        return this;
-    }
-
-    public final void closeSession() {
-        closeSession(Collections.<String>emptySet());
-    }
-
-    public final void closeSession(Set<String> customDimensions) {
-        if (!pendingActions.isEmpty()) {
-            doPendingActions();
-        }
-
-        ActionComposite<Set<String>> closeActionWithBuiltInDimensions =
-            ActionComposite.create(CloseSessionAction, addBuiltInDimensionsAction);
-        for (AnalyticsAdapter adapter : analyticsAdapters.values()) {
-            closeActionWithBuiltInDimensions.call(adapter, customDimensions);
-        }
-    }
-
     public final void fireEvent(AnalyticsEvent analyticsEvent) {
         if (discardOnFireSingleEvent) {
             discardPendingActions();
         }
 
-        openSession();
         for (AnalyticsAdapter adapter: analyticsAdapters.values()) {
             adapter.addEvent(analyticsEvent);
         }
-        closeSession();
     }
 
     private void discardPendingActions() {
@@ -146,18 +113,6 @@ public final class Analytics {
         }
     };
 
-    private static final Action<Set<String>> OpenSessionAction = new Action<Set<String>>() {
-        @Override public void call(AnalyticsAdapter analyticsAdapter, Set<String> data) {
-            analyticsAdapter.open(data);
-        }
-    };
-
-    private static final Action<Set<String>> CloseSessionAction = new Action<Set<String>>() {
-        @Override public void call(AnalyticsAdapter analyticsAdapter, Set<String> data) {
-            analyticsAdapter.close(data);
-        }
-    };
-
     @AutoValue
     abstract static class ActionComposite<T> implements Action<T>, Serializable {
         abstract Action<T> g();
@@ -184,25 +139,19 @@ public final class Analytics {
     }
 
     public static class Builder {
-        private final Context context;
+        private final Application application;
         private Set<String> builtinDimensions = new HashSet<String>();
         private String localyticsAppKey;
         private String talkingDataKey;
         private String talkingDataTag;
-        private boolean amp;
         private boolean discardOnFireSingleEvent = true;
 
-        private Builder(Context context) {
-            this.context = context;
+        private Builder(Application application) {
+            this.application = application;
         }
 
         public Builder withLocalytics(String appKey) {
-            return withLocalytics(appKey, false);
-        }
-
-        public Builder withLocalytics(String appKey, boolean isAmp) {
             localyticsAppKey = appKey;
-            amp = isAmp;
             return this;
         }
 
@@ -238,12 +187,12 @@ public final class Analytics {
             Map<Integer, AnalyticsAdapter> adapters =
                 new HashMap<Integer, AnalyticsAdapter>();
             if (localyticsAppKey != null && Environment.hasLocalyticsOnClasspath()) {
-                adapters.put(LOCALYTICS, new LocalyticsAdapter(context, localyticsAppKey, amp));
+                adapters.put(LOCALYTICS, new LocalyticsAdapter(application, localyticsAppKey));
             }
 
             if (talkingDataKey != null && Environment.hasTalkingDataOnClasspath()) {
                 adapters.put(TALKING_DATA,
-                    new TalkingDataAdapter(context, talkingDataKey, talkingDataTag));
+                    new TalkingDataAdapter(application, talkingDataKey, talkingDataTag));
             }
 
             return adapters;
