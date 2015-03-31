@@ -4,7 +4,7 @@ package com.tradehero.metrics;
  */
 public class Environment {
     public static boolean hasLocalyticsOnClasspath() {
-        return hasClass("com.localytics.android.LocalyticsSession");
+        return hasClass("com.localytics.android.Localytics");
     }
 
     public static boolean hasTalkingDataOnClasspath() {
